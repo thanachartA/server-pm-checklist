@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Server Room PM Checklist - IT Department</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155; --border: #475569;
+    --text: #f1f5f9; --text-muted: #94a3b8;
+    --primary: #3b82f6; --primary-hover: #2563eb;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --orange: #f97316;
+    --purple: #a855f7; --cyan: #06b6d4;
+  }
+  body { font-family: 'Inter', 'Noto Sans Thai', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border); padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--cyan));
+    border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; }
+  .header .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .month-selector {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border);
+  }
+  .month-selector label { font-size: 13px; color: var(--text-muted); }
+  .month-selector input {
+    background: transparent; border: none; color: var(--text);
+    font-size: 14px; font-family: inherit; cursor: pointer; outline: none;
+  }
+  .month-selector input::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+  .btn {
+    padding: 10px 20px; border-radius: 10px; border: none; font-family: inherit;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: #16a34a; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { background: var(--surface2); }
+  .btn-red { background: var(--red); color: white; }
+  .btn-red:hover { background: #dc2626; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; transition: transform 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-2px); }
+  .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 32px; font-weight: 700; margin: 6px 0; }
+  .stat-sub { font-size: 12px; color: var(--text-muted); }
+  .stat-green { color: var(--green); }
+  .stat-red { color: var(--red); }
+  .stat-yellow { color: var(--yellow); }
+  .stat-blue { color: var(--primary); }
+
+  .progress-wrap { width: 100%; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .progress-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+  .progress-green { background: var(--green); }
+  .progress-yellow { background: var(--yellow); }
+  .progress-red { background: var(--red); }
+
+  .tabs {
+    display: flex; gap: 4px; background: var(--surface); padding: 4px;
+    border-radius: 12px; margin-bottom: 24px; border: 1px solid var(--border); width: fit-content;
+  }
+  .tab {
+    padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 500;
+    cursor: pointer; color: var(--text-muted); transition: all 0.2s;
+    border: none; background: transparent; font-family: inherit;
+  }
+  .tab.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+  .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; margin-bottom: 20px; overflow: hidden;
+  }
+  .section-header {
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none; transition: background 0.2s;
+  }
+  .section-header:hover { background: var(--surface2); }
+  .section-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .section-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-gray { background: rgba(148,163,184,0.15); color: var(--text-muted); }
+  .section-body { padding: 0 20px 20px; }
+  .section-body.collapsed { display: none; }
+
+  .checklist-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .checklist-table th {
+    background: var(--surface2); padding: 10px 12px; text-align: left;
+    font-weight: 600; color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .checklist-table th:first-child { border-radius: 8px 0 0 0; }
+  .checklist-table th:last-child { border-radius: 0 8px 0 0; }
+  .checklist-table td { padding: 10px 12px; border-bottom: 1px solid rgba(71,85,105,0.3); vertical-align: middle; }
+  .checklist-table tr:last-child td { border-bottom: none; }
+  .checklist-table tr:hover td { background: rgba(59,130,246,0.05); }
+  .item-id { color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+  .item-name { font-weight: 500; }
+  .item-desc { color: var(--text-muted); font-size: 12px; }
+
+  .status-select {
+    appearance: none; padding: 6px 28px 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 13px; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; min-width: 100px;
+  }
+  .status-select.pass { border-color: var(--green); color: var(--green); }
+  .status-select.fail { border-color: var(--red); color: var(--red); }
+  .status-select.na { border-color: var(--text-muted); color: var(--text-muted); }
+
+  .text-input {
+    padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px;
+    width: 100%; min-width: 80px;
+  }
+  .text-input:focus { border-color: var(--primary); outline: none; }
+  .text-input-sm { max-width: 120px; }
+
+  .server-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .server-table th {
+    background: var(--surface2); padding: 12px; text-align: center;
+    font-weight: 600; color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border);
+  }
+  .server-table th:first-child { text-align: left; border-radius: 8px 0 0 0; }
+  .server-table th:last-child { border-radius: 0 8px 0 0; }
+  .server-table td { padding: 8px 12px; border-bottom: 1px solid rgba(71,85,105,0.3); text-align: center; }
+  .server-table td:first-child { text-align: left; font-weight: 500; }
+  .server-table tr:hover td { background: rgba(59,130,246,0.05); }
+
+  .status-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; transition: transform 0.15s;
+  }
+  .status-dot:hover { transform: scale(1.2); }
+  .dot-pass { background: rgba(34,197,94,0.2); }
+  .dot-fail { background: rgba(239,68,68,0.2); }
+  .dot-na { background: rgba(148,163,184,0.15); }
+  .dot-none { background: rgba(71,85,105,0.2); }
+
+  .signoff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .signoff-field { display: flex; flex-direction: column; gap: 6px; }
+  .signoff-field label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .signoff-field.full { grid-column: 1 / -1; }
+  .signoff-field textarea {
+    padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-family: inherit; font-size: 13px;
+    resize: vertical; min-height: 80px;
+  }
+  .signoff-field textarea:focus { border-color: var(--primary); outline: none; }
+
+  .result-select {
+    appearance: none; padding: 10px 32px 10px 14px; border-radius: 8px;
+    border: 2px solid var(--border); background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .result-select.res-pass { border-color: var(--green); color: var(--green); }
+  .result-select.res-fail { border-color: var(--red); color: var(--red); }
+  .result-select.res-cond { border-color: var(--yellow); color: var(--yellow); }
+
+  .export-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 24px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .export-bar-label { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .export-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: 14px;
+    display: none; z-index: 9999; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+  }
+  .toast-success { background: var(--green); color: white; }
+  .toast-error { background: var(--red); color: white; }
+  .toast-info { background: var(--primary); color: white; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .chevron { transition: transform 0.2s; font-size: 12px; color: var(--text-muted); }
+  .chevron.open { transform: rotate(90deg); }
+
+  .sync-status { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .sync-ok { color: var(--green); }
+  .sync-saving { color: var(--yellow); }
+  .sync-error { color: var(--red); }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.8);
+    display: flex; align-items: center; justify-content: center; z-index: 9999;
+  }
+  .loading-spinner {
+    width: 48px; height: 48px; border: 4px solid var(--surface2);
+    border-top-color: var(--primary); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .header { padding: 16px; flex-wrap: wrap; gap: 12px; }
+    .container { padding: 16px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .signoff-grid { grid-template-columns: 1fr; }
+    .export-bar { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay"><div class="loading-spinner"></div></div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">🖥️</div>
+    <div>
+      <h1>Server Room PM Checklist</h1>
+      <div class="subtitle">IT Department — Preventive Maintenance &nbsp;|&nbsp; Supabase Connected</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="month-selector">
+      <label>เดือน:</label>
+      <input type="month" id="selectedMonth" onchange="loadMonth()">
+    </div>
+    <span id="syncStatus" class="sync-status sync-ok">● Connected</span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="export-bar">
+    <div class="export-bar-label">📤 Export รายเดือน</div>
+    <div class="export-actions">
+      <button class="btn btn-green" onclick="exportExcel()">📊 Export Excel</button>
+      <button class="btn btn-red" onclick="exportPDF()">📄 Export PDF</button>
+      <button class="btn btn-outline" onclick="window.print()">🖨️ Print</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('checklist', this)">📋 PM Checklist</button>
+    <button class="tab" onclick="switchTab('servers', this)">🖥️ Server Status</button>
+    <button class="tab" onclick="switchTab('signoff', this)">✍️ Sign-off</button>
+  </div>
+
+  <div id="tab-checklist" class="tab-content active"></div>
+  <div id="tab-servers" class="tab-content"></div>
+  <div id="tab-signoff" class="tab-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── SUPABASE CONFIG ───
+const SUPABASE_URL = 'https://pxcgnhxtmgujjwboribv.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Y2duaHh0bWd1amp3Ym9yaWJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTU4ODAsImV4cCI6MjA4OTE3MTg4MH0.0REOX6qrf12sQgf2bcMOekxGVjqEvnKNXt0wDRdp1RQ';
+
+async function supaFetch(table, method, params = {}) {
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=representation' : 'return=representation'
+  };
+  let url = `${SUPABASE_URL}/rest/v1/${table}`;
+  if (params.query) url += `?${params.query}`;
+
+  const opts = { method, headers };
+  if (params.body) opts.body = JSON.stringify(params.body);
+
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`Supabase error: ${res.status}`, err);
+    throw new Error(err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+// ─── DATA ───
+const checklistSections = [
+  { id:'physical', icon:'🔧', title:'1. การตรวจสอบความเรียบร้อยภายนอก (Physical Inspection)', items:[
+    {id:'1.1',name:'ทำความสะอาดเครื่อง',desc:'ดูดฝุ่นภายในเครื่อง (เป่าลม) บริเวณใบพัดลมและ Heatsink'},
+    {id:'1.2',name:'ตรวจสอบอุณหภูมิ',desc:'ตรวจเช็กระบบระบายความร้อนในห้อง Server (Air Condition)'},
+    {id:'1.3',name:'สายสัญญาณ',desc:'ตรวจเช็กสาย LAN, Fiber และสายไฟ — ไม่หักงอ/หลวม'},
+    {id:'1.4',name:'ระบบสำรองไฟ (UPS)',desc:'ทดสอบการจ่ายไฟสำรอง และตรวจสอบสภาพแบตเตอรี่'},
+  ]},
+  { id:'hardware', icon:'💾', title:'2. การตรวจสอบระดับ Hardware & Infrastructure', items:[
+    {id:'2.1',name:'Log Errors (Hardware)',desc:'ตรวจสอบ System Log ใน iDRAC / ILO / Management Console — Error ของ PSU, RAM'},
+    {id:'2.2',name:'Storage / RAID Status',desc:'ตรวจสอบสถานะ HDD ทุกลูกใน RAID Controller — ไม่มีไฟส้ม/แดง'},
+    {id:'2.3',name:'vSphere / Virtualization',desc:'ตรวจสอบ Health Status ของ Host และ Resource Usage (CPU/RAM)'},
+  ]},
+  { id:'os', icon:'🖥️', title:'3. การจัดการ OS & Software', items:[
+    {id:'3.1',name:'Windows Update / WSUS',desc:'ตรวจสอบ Patch ล่าสุด: AD01, AD02, File Server'},
+    {id:'3.2',name:'Disk Space',desc:'ตรวจเช็กพื้นที่ว่างทุก Drive — เน้น ERP_DATABASE และ Mail Server'},
+    {id:'3.3',name:'Application Update',desc:'ตรวจสอบเวอร์ชัน Alfresco, ByteHR, CMMS-New ว่าต้องการ Patch หรือไม่'},
+    {id:'3.4',name:'Python / DTS-Software',desc:'ตรวจสอบ Library / Dependency ว่าทำงานปกติ'},
+  ]},
+  { id:'network', icon:'🌐', title:'4. ระบบเครือข่ายและความปลอดภัย (Network & Security)', items:[
+    {id:'4.1',name:'Fortigate 100F — Firmware',desc:'ตรวจสอบ Firmware Version และ Backup Configuration เก็บไว้'},
+    {id:'4.2',name:'FortiAnalyzer Cloud',desc:'ตรวจสอบ Log และรายงานความผิดปกติของ Traffic รอบปี'},
+    {id:'4.3',name:'Firewall Rules Cleaning',desc:'ตรวจสอบและลบ Rules ที่ไม่ได้ใช้งานออก'},
+    {id:'4.4',name:'Antivirus / Endpoint (SEQRite)',desc:'ตรวจสอบสถานะเครื่องลูกข่ายใน SEQRite ว่า Update ครบทุกเครื่อง'},
+  ]},
+  { id:'backup', icon:'💿', title:'5. การสำรองข้อมูลและการกู้คืน (Backup & Recovery)', items:[
+    {id:'5.1',name:'Veeam Backup',desc:'ทำการ Backup System'},
+  ]},
+  { id:'access', icon:'🔐', title:'6. การจัดการ User และสิทธิ์การเข้าถึง (Access Control)', items:[
+    {id:'6.1',name:'User Audit',desc:'ลบ Account พนักงานที่ลาออกแล้ว — ใน AD และ O365'},
+    {id:'6.2',name:'Password Policy',desc:'ตรวจสอบและบังคับเปลี่ยนรหัสผ่านตามนโยบายบริษัท'},
+  ]},
+];
+
+const servers = [
+  {name:'AD01',note:'Domain Controller'},{name:'AD02',note:'Domain Controller (Secondary)'},
+  {name:'Alfresco',note:''},{name:'Alfresco02_restored',note:''},
+  {name:'AMR-HSD-01',note:'สำหรับ License CAD Online'},{name:'AMR-SEQRite',note:''},
+  {name:'BUDGET',note:''},{name:'ByteHR (Auto Sync)',note:'ตรวจสอบ Application Version'},
+  {name:'CMMS-New',note:''},{name:'DTS-Software',note:''},
+  {name:'ERP_MangoAnyware',note:'เปลี่ยนไปใช้งาน ERP Mango On Cloud'},
+  {name:'ERP_DATABASE',note:'เปลี่ยนไปใช้งาน ERP SQL On Cloud'},
+  {name:'DUDE',note:''},{name:'FileSvr2',note:'ตรวจสอบ Permission Folder'},
+  {name:'Git-Server',note:''},{name:'IMPCASE',note:''},
+  {name:'Kerio_Mail',note:''},{name:'Microsoft O365',note:''},
+  {name:'Print Server (New)',note:''},{name:'Python',note:'ระบบทดสอบสำหรับใช้ภายใน'},
+  {name:'SALEENGINEER',note:''},{name:'SI-HELPDESK',note:''},
+  {name:'StarCat',note:''},{name:'TAFF-NEW',note:''},
+  {name:'Tigersoft-Restore',note:''},{name:'VirtualSV-ITS',note:''},
+  {name:'VirtualSV-MA Service',note:''},{name:'WSUS',note:'ตรวจสอบสถานะ Ver.Windows Client'},
+  {name:'Zemel',note:''},{name:'Network Core Switch',note:''},
+  {name:'XA65-01-Restore',note:'ไม่มีการใช้งาน / เก็บข้อมูล'},
+  {name:'XA65-02',note:'ไม่มีการใช้งาน / เก็บข้อมูล'},
+  {name:'XA65-03_Restore',note:'ไม่มีการใช้งาน / เก็บข้อมูล'},
+  {name:'vSphere Client',note:'VM Control (Master Server)'},
+  {name:'Fortigate 100F',note:'ตรวจสอบสถานะ License'},
+  {name:'FortiAnalyzer Cloud',note:''},
+];
+
+const serverCols = ['hardware','os','network','access_ctrl'];
+const serverColLabels = ['Hardware','OS/Windows','Network/Security','Access Control'];
+// --- STATE ---
+let checklistData = {};  // { itemId: { status, result, inspector, date, note } }
+let serverData = {};     // { serverName: { hardware, os, network, access_ctrl, note, inspector } }
+let signoffData = {};
+let currentMonth = '';
+let saveTimer = null;
+
+// --- DEBOUNCED SAVE ---
+function scheduleSave(type) {
+  setSyncStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToDB(type), 600);
+}
+
+function setSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  if (status === 'ok') { el.className = 'sync-status sync-ok'; el.textContent = '● Saved'; }
+  else if (status === 'saving') { el.className = 'sync-status sync-saving'; el.textContent = '● Saving...'; }
+  else if (status === 'error') { el.className = 'sync-status sync-error'; el.textContent = '● Error'; }
+}
+
+// --- DB OPERATIONS ---
+async function loadMonth() {
+  currentMonth = document.getElementById('selectedMonth').value;
+  if (!currentMonth) return;
+  document.getElementById('loadingOverlay').style.display = 'flex';
+
+  try {
+    // Load all 3 tables in parallel
+    const [clRows, svRows, soRows] = await Promise.all([
+      supaFetch('pm_checklist', 'GET', { query: `month=eq.${currentMonth}&select=*` }),
+      supaFetch('pm_server_status', 'GET', { query: `month=eq.${currentMonth}&select=*` }),
+      supaFetch('pm_signoff', 'GET', { query: `month=eq.${currentMonth}&select=*` }),
+    ]);
+
+    checklistData = {};
+    clRows.forEach(r => {
+      checklistData[r.item_id] = { status: r.status||'', result: r.result||'', inspector: r.inspector||'', date: r.check_date||'', note: r.note||'' };
+    });
+
+    serverData = {};
+    svRows.forEach(r => {
+      serverData[r.server_name] = { hardware: r.hardware||'', os: r.os||'', network: r.network||'', access_ctrl: r.access_ctrl||'', note: r.note||'', inspector: r.inspector||'' };
+    });
+
+    signoffData = soRows.length > 0 ? {
+      technician: soRows[0].technician||'', supervisor: soRows[0].supervisor||'',
+      department: soRows[0].department||'IT', startDate: soRows[0].start_date||'',
+      endDate: soRows[0].end_date||'', downtime: soRows[0].downtime||'',
+      result: soRows[0].result||'', issues: soRows[0].issues||'', actionPlan: soRows[0].action_plan||''
+    } : {};
+
+    setSyncStatus('ok');
+    renderAll();
+  } catch(e) {
+    console.error('Load error:', e);
+    setSyncStatus('error');
+    showToast('โหลดข้อมูลไม่สำเร็จ', 'error');
+  } finally {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }
+}
+
+async function saveToDB(type) {
+  try {
+    if (type === 'checklist') {
+      const rows = Object.entries(checklistData).map(([itemId, d]) => ({
+        month: currentMonth, item_id: itemId,
+        status: d.status||'', result: d.result||'', inspector: d.inspector||'',
+        check_date: d.date || null, note: d.note||'', updated_at: new Date().toISOString()
+      }));
+      if (rows.length) await supaFetch('pm_checklist', 'POST', { query: 'on_conflict=month,item_id', body: rows });
+    }
+    else if (type === 'server') {
+      const rows = Object.entries(serverData).map(([name, d]) => ({
+        month: currentMonth, server_name: name,
+        hardware: d.hardware||'', os: d.os||'', network: d.network||'', access_ctrl: d.access_ctrl||'',
+        note: d.note||'', inspector: d.inspector||'', updated_at: new Date().toISOString()
+      }));
+      if (rows.length) await supaFetch('pm_server_status', 'POST', { query: 'on_conflict=month,server_name', body: rows });
+    }
+    else if (type === 'signoff') {
+      const d = signoffData;
+      await supaFetch('pm_signoff', 'POST', { query: 'on_conflict=month', body: [{
+        month: currentMonth, technician: d.technician||'', supervisor: d.supervisor||'',
+        department: d.department||'IT', start_date: d.startDate||null, end_date: d.endDate||null,
+        downtime: d.downtime||'', result: d.result||'', issues: d.issues||'',
+        action_plan: d.actionPlan||'', updated_at: new Date().toISOString()
+      }]});
+    }
+    setSyncStatus('ok');
+  } catch(e) {
+    console.error('Save error:', e);
+    setSyncStatus('error');
+    showToast('บันทึกไม่สำเร็จ', 'error');
+  }
+}
+
+// --- RENDER ---
+function renderAll() { renderStats(); renderChecklist(); renderServers(); renderSignoff(); }
+
+function getChecklistStats() {
+  let total=0, pass=0, fail=0, na=0, pending=0;
+  checklistSections.forEach(s => s.items.forEach(i => {
+    total++;
+    const v = checklistData[i.id]?.status || '';
+    if(v==='pass')pass++; else if(v==='fail')fail++; else if(v==='na')na++; else pending++;
+  }));
+  return {total,pass,fail,na,pending};
+}
+
+function getServerStats() {
+  let total=0, pass=0, fail=0, na=0, pending=0;
+  servers.forEach(s => serverCols.forEach(c => {
+    total++;
+    const v = serverData[s.name]?.[c] || '';
+    if(v==='pass')pass++; else if(v==='fail')fail++; else if(v==='na')na++; else pending++;
+  }));
+  return {total,pass,fail,na,pending};
+}
+
+function renderStats() {
+  const cs = getChecklistStats(), ss = getServerStats();
+  const totalItems = cs.total + ss.total;
+  const totalDone = cs.pass+cs.fail+cs.na+ss.pass+ss.fail+ss.na;
+  const pct = totalItems ? Math.round(totalDone/totalItems*100) : 0;
+  const progressClass = pct===100?'progress-green':pct>50?'progress-yellow':'progress-red';
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">ความคืบหน้า</div>
+      <div class="stat-value stat-blue">${pct}%</div>
+      <div class="progress-wrap"><div class="progress-bar ${progressClass}" style="width:${pct}%"></div></div>
+      <div class="stat-sub" style="margin-top:4px">${totalDone} / ${totalItems} รายการ</div>
+    </div>
+    <div class="stat-card"><div class="stat-label">Checklist ผ่าน</div><div class="stat-value stat-green">${cs.pass}</div><div class="stat-sub">จาก ${cs.total} รายการ</div></div>
+    <div class="stat-card"><div class="stat-label">Server ผ่าน</div><div class="stat-value stat-green">${ss.pass}</div><div class="stat-sub">จาก ${ss.total} จุดตรวจ</div></div>
+    <div class="stat-card"><div class="stat-label">พบปัญหา</div><div class="stat-value stat-red">${cs.fail+ss.fail}</div><div class="stat-sub">ต้องแก้ไข</div></div>
+    <div class="stat-card"><div class="stat-label">รอตรวจสอบ</div><div class="stat-value stat-yellow">${cs.pending+ss.pending}</div><div class="stat-sub">ยังไม่ได้ตรวจ</div></div>`;
+}
+
+function renderChecklist() {
+  let html = '';
+  checklistSections.forEach(sec => {
+    let secPass=0, secFail=0, secTotal=sec.items.length;
+    sec.items.forEach(i => { const v=checklistData[i.id]?.status||''; if(v==='pass')secPass++; if(v==='fail')secFail++; });
+    const badgeClass = secFail>0?'badge-red':secPass===secTotal?'badge-green':'badge-gray';
+    const badgeText = secFail>0?`${secFail} Fail`:secPass===secTotal?'Complete':`${secPass}/${secTotal}`;
+
+    html += `<div class="section">
+      <div class="section-header" onclick="toggleSection('${sec.id}')">
+        <div class="section-title"><span>${sec.icon}</span><span>${sec.title}</span>
+          <span class="section-badge ${badgeClass}">${badgeText}</span></div>
+        <span class="chevron open" id="chev-${sec.id}">▶</span>
+      </div>
+      <div class="section-body" id="body-${sec.id}">
+        <table class="checklist-table"><thead><tr>
+          <th style="width:60px">#</th><th style="width:180px">รายการตรวจ</th><th>รายละเอียด</th>
+          <th style="width:110px">สถานะ</th><th style="width:140px">ผลตรวจสอบ</th>
+          <th style="width:100px">ผู้ตรวจ</th><th style="width:110px">วันที่</th><th style="width:140px">หมายเหตุ</th>
+        </tr></thead><tbody>`;
+
+    sec.items.forEach(item => {
+      const d = checklistData[item.id] || {};
+      const sc = d.status==='pass'?'pass':d.status==='fail'?'fail':d.status==='na'?'na':'';
+      html += `<tr>
+        <td class="item-id">${item.id}</td><td class="item-name">${item.name}</td><td class="item-desc">${item.desc}</td>
+        <td><select class="status-select ${sc}" onchange="updCL('${item.id}','status',this.value);this.className='status-select '+this.value">
+          <option value="">-- เลือก --</option>
+          <option value="pass" ${d.status==='pass'?'selected':''}>✓ ผ่าน</option>
+          <option value="fail" ${d.status==='fail'?'selected':''}>✗ ไม่ผ่าน</option>
+          <option value="na" ${d.status==='na'?'selected':''}>N/A</option></select></td>
+        <td><input class="text-input" value="${d.result||''}" onchange="updCL('${item.id}','result',this.value)" placeholder="ผลตรวจ"></td>
+        <td><input class="text-input text-input-sm" value="${d.inspector||''}" onchange="updCL('${item.id}','inspector',this.value)" placeholder="ชื่อ"></td>
+        <td><input type="date" class="text-input text-input-sm" value="${d.date||''}" onchange="updCL('${item.id}','date',this.value)"></td>
+        <td><input class="text-input" value="${d.note||''}" onchange="updCL('${item.id}','note',this.value)" placeholder="หมายเหตุ"></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div></div>`;
+  });
+  document.getElementById('tab-checklist').innerHTML = html;
+}
+
+function renderServers() {
+  let rows = '';
+  servers.forEach(s => {
+    const sd = serverData[s.name] || {};
+    let cells = '';
+    serverCols.forEach(col => {
+      const val = sd[col] || '';
+      let dotClass='dot-none', icon='—';
+      if(val==='pass'){dotClass='dot-pass';icon='✓';}
+      else if(val==='fail'){dotClass='dot-fail';icon='✗';}
+      else if(val==='na'){dotClass='dot-na';icon='—';}
+      cells += `<td><span class="status-dot ${dotClass}" onclick="cycleSV('${s.name}','${col}',this)">${icon}</span></td>`;
+    });
+    rows += `<tr><td>${s.name}</td>${cells}
+      <td><input class="text-input" value="${sd.note||s.note}" onchange="updSV('${s.name}','note',this.value)" style="min-width:160px"></td>
+      <td><input class="text-input text-input-sm" value="${sd.inspector||''}" onchange="updSV('${s.name}','inspector',this.value)" placeholder="ชื่อ"></td></tr>`;
+  });
+
+  document.getElementById('tab-servers').innerHTML = `
+    <div class="section"><div class="section-body">
+      <p style="margin-bottom:12px;color:var(--text-muted);font-size:13px">💡 คลิกที่ icon สถานะเพื่อเปลี่ยน: ✓ ผ่าน → ✗ ไม่ผ่าน → N/A → ยังไม่ตรวจ</p>
+      <div style="overflow-x:auto"><table class="server-table"><thead><tr>
+        <th style="width:200px">Server / ระบบ</th>${serverColLabels.map(l=>`<th>${l}</th>`).join('')}
+        <th>หมายเหตุ</th><th style="width:100px">ผู้ตรวจ</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>
+    </div></div>
+    <div style="padding:12px 0;color:var(--text-muted);font-size:12px">✓ = ผ่าน &nbsp; ✗ = ไม่ผ่าน &nbsp; — = N/A</div>`;
+}
+
+function renderSignoff() {
+  const d = signoffData;
+  const rc = d.result==='Pass'?'res-pass':d.result==='Fail'?'res-fail':d.result==='Conditional'?'res-cond':'';
+  document.getElementById('tab-signoff').innerHTML = `
+    <div class="section">
+      <div class="section-header"><div class="section-title"><span>✍️</span><span>แบบฟอร์มลงนาม / Sign-off Sheet</span></div></div>
+      <div class="section-body"><div class="signoff-grid">
+        <div class="signoff-field"><label>ชื่อผู้ดำเนินการ (Technician)</label>
+          <input class="text-input" value="${d.technician||''}" onchange="updSO('technician',this.value)"></div>
+        <div class="signoff-field"><label>ชื่อผู้ตรวจสอบ (Supervisor)</label>
+          <input class="text-input" value="${d.supervisor||''}" onchange="updSO('supervisor',this.value)"></div>
+        <div class="signoff-field"><label>แผนก</label>
+          <input class="text-input" value="${d.department||'IT'}" onchange="updSO('department',this.value)"></div>
+        <div class="signoff-field"><label>สรุปผล</label>
+          <select class="result-select ${rc}" onchange="updSO('result',this.value);this.className='result-select res-'+this.value.toLowerCase().replace('conditional','cond')">
+            <option value="">-- เลือก --</option>
+            <option value="Pass" ${d.result==='Pass'?'selected':''}>✓ Pass</option>
+            <option value="Fail" ${d.result==='Fail'?'selected':''}>✗ Fail</option>
+            <option value="Conditional" ${d.result==='Conditional'?'selected':''}>⚠ Conditional</option></select></div>
+        <div class="signoff-field"><label>วันที่เริ่ม PM</label>
+          <input type="date" class="text-input" value="${d.startDate||''}" onchange="updSO('startDate',this.value)"></div>
+        <div class="signoff-field"><label>วันที่สิ้นสุด PM</label>
+          <input type="date" class="text-input" value="${d.endDate||''}" onchange="updSO('endDate',this.value)"></div>
+        <div class="signoff-field"><label>Downtime (ชั่วโมง)</label>
+          <input type="number" class="text-input" value="${d.downtime||''}" onchange="updSO('downtime',this.value)" placeholder="0"></div>
+        <div class="signoff-field"><label>&nbsp;</label></div>
+        <div class="signoff-field full"><label>ปัญหาที่พบและยังไม่ได้แก้ไข</label>
+          <textarea onchange="updSO('issues',this.value)" placeholder="รายละเอียดปัญหา...">${d.issues||''}</textarea></div>
+        <div class="signoff-field full"><label>แผนการดำเนินการต่อ (Action Plan)</label>
+          <textarea onchange="updSO('actionPlan',this.value)" placeholder="แผนแก้ไข...">${d.actionPlan||''}</textarea></div>
+      </div></div></div>`;
+}
+
+// --- UPDATE HANDLERS ---
+function updCL(id, field, value) {
+  if(!checklistData[id]) checklistData[id] = {};
+  checklistData[id][field] = value;
+  scheduleSave('checklist');
+  renderStats();
+}
+
+function updSV(name, field, value) {
+  if(!serverData[name]) serverData[name] = {};
+  serverData[name][field] = value;
+  scheduleSave('server');
+  renderStats();
+}
+
+function cycleSV(name, col, el) {
+  if(!serverData[name]) serverData[name] = {};
+  const cur = serverData[name][col] || '';
+  const cycle = {'':'pass','pass':'fail','fail':'na','na':''};
+  const next = cycle[cur];
+  serverData[name][col] = next;
+  const icons = {pass:'✓',fail:'✗',na:'—','':'—'};
+  const cls = {pass:'dot-pass',fail:'dot-fail',na:'dot-na','':'dot-none'};
+  el.textContent = icons[next]; el.className = `status-dot ${cls[next]}`;
+  scheduleSave('server');
+  renderStats();
+}
+
+function updSO(field, value) {
+  signoffData[field] = value;
+  scheduleSave('signoff');
+}
+
+function toggleSection(id) {
+  document.getElementById(`body-${id}`).classList.toggle('collapsed');
+  document.getElementById(`chev-${id}`).classList.toggle('open');
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tabId}`).classList.add('active');
+  btn.classList.add('active');
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast toast-${type}`; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// --- EXPORT EXCEL ---
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const ml = currentMonth;
+
+  const clRows = [['Server PM Checklist — '+ml],[],['#','รายการตรวจสอบ','รายละเอียด','สถานะ','ผลตรวจสอบ','ผู้ตรวจ','วันที่','หมายเหตุ']];
+  checklistSections.forEach(sec => {
+    clRows.push([]); clRows.push([sec.title]);
+    sec.items.forEach(i => {
+      const d = checklistData[i.id] || {};
+      const sm = {pass:'✓ ผ่าน',fail:'✗ ไม่ผ่าน',na:'N/A'};
+      clRows.push([i.id, i.name, i.desc, sm[d.status]||'', d.result||'', d.inspector||'', d.date||'', d.note||'']);
+    });
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(clRows);
+  ws1['!cols'] = [{wch:6},{wch:25},{wch:50},{wch:12},{wch:20},{wch:12},{wch:12},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'PM Checklist');
+
+  const svRows = [['Server Status Summary — '+ml],[],['Server',... serverColLabels,'หมายเหตุ','ผู้ตรวจ']];
+  servers.forEach(s => {
+    const sd = serverData[s.name] || {};
+    const sm = {pass:'✓',fail:'✗',na:'N/A'};
+    svRows.push([s.name,...serverCols.map(c=>sm[sd[c]]||''), sd.note||s.note, sd.inspector||'']);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(svRows);
+  ws2['!cols'] = [{wch:25},{wch:12},{wch:14},{wch:16},{wch:14},{wch:35},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Server Status');
+
+  const so = signoffData;
+  const soRows = [['Sign-off — '+ml],[],['หัวข้อ','ข้อมูล'],
+    ['ผู้ดำเนินการ',so.technician||''],['ผู้ตรวจสอบ',so.supervisor||''],
+    ['แผนก',so.department||'IT'],['วันที่เริ่ม',so.startDate||''],
+    ['วันที่สิ้นสุด',so.endDate||''],['Downtime (ชม.)',so.downtime||''],
+    ['สรุปผล',so.result||''],['ปัญหาที่พบ',so.issues||''],['Action Plan',so.actionPlan||'']];
+  const ws3 = XLSX.utils.aoa_to_sheet(soRows);
+  ws3['!cols'] = [{wch:30},{wch:50}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Sign-off');
+
+  XLSX.writeFile(wb, `Server_PM_${ml}.xlsx`);
+  showToast('Export Excel สำเร็จ!');
+}
+
+// --- EXPORT PDF ---
+function exportPDF() {
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF('landscape','mm','a4');
+  const ml = currentMonth;
+
+  doc.setFontSize(16); doc.text('Server Room PM Checklist — '+ml, 14, 15);
+  doc.setFontSize(10); doc.text('IT Department', 14, 22);
+
+  const clData = [];
+  checklistSections.forEach(sec => sec.items.forEach(i => {
+    const d = checklistData[i.id] || {};
+    const sm = {pass:'Pass',fail:'Fail',na:'N/A'};
+    clData.push([i.id, i.name, sm[d.status]||'-', d.result||'', d.inspector||'', d.date||'', d.note||'']);
+  }));
+  doc.autoTable({ startY:28, head:[['#','Item','Status','Result','Inspector','Date','Note']], body:clData,
+    styles:{fontSize:8,cellPadding:2}, headStyles:{fillColor:[30,58,95],textColor:255},
+    alternateRowStyles:{fillColor:[240,245,250]}, columnStyles:{0:{cellWidth:12},1:{cellWidth:45},2:{cellWidth:18},3:{cellWidth:40}}});
+
+  doc.addPage();
+  doc.setFontSize(14); doc.text('Server Status Summary — '+ml, 14, 15);
+  const svData = [];
+  servers.forEach(s => {
+    const sd = serverData[s.name] || {};
+    const m = {pass:'Pass',fail:'Fail',na:'N/A'};
+    svData.push([s.name,...serverCols.map(c=>m[sd[c]]||'-'), sd.note||s.note||'']);
+  });
+  doc.autoTable({ startY:22, head:[['Server','Hardware','OS','Network','Access','Note']], body:svData,
+    styles:{fontSize:7,cellPadding:2}, headStyles:{fillColor:[30,58,95],textColor:255},
+    alternateRowStyles:{fillColor:[240,245,250]}, columnStyles:{0:{cellWidth:42},5:{cellWidth:55}}});
+
+  doc.addPage();
+  doc.setFontSize(14); doc.text('Sign-off — '+ml, 14, 15);
+  const so = signoffData;
+  doc.autoTable({ startY:22, head:[['Field','Details']],
+    body:[['Technician',so.technician||''],['Supervisor',so.supervisor||''],['Department',so.department||'IT'],
+      ['Start Date',so.startDate||''],['End Date',so.endDate||''],['Downtime',so.downtime||''],
+      ['Result',so.result||''],['Issues',so.issues||''],['Action Plan',so.actionPlan||'']],
+    styles:{fontSize:9,cellPadding:4}, headStyles:{fillColor:[30,58,95],textColor:255},
+    columnStyles:{0:{cellWidth:45,fontStyle:'bold'},1:{cellWidth:180}}});
+
+  doc.save(`Server_PM_${ml}.pdf`);
+  showToast('Export PDF สำเร็จ!');
+}
+
+// --- INIT ---
+document.getElementById('selectedMonth').value = new Date().toISOString().slice(0,7);
+loadMonth();
+
+</script>
+</body>
+</html>
